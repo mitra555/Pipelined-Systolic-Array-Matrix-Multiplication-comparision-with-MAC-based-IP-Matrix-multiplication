@@ -1,54 +1,17 @@
-module PE #(parameter DATA_WIDTH = 8)(
-    input  logic signed [DATA_WIDTH-1:0] a,
-    input  logic signed [DATA_WIDTH-1:0] b,
-    input  logic clk,
-    input  logic rst,    // active-low reset
-    input  logic clear,
-    output logic signed [DATA_WIDTH-1:0] a_out,
-    output logic signed [DATA_WIDTH-1:0] b_out,
-    output logic signed [2*DATA_WIDTH-1:0] C_out
-);
-    localparam ACCW = 2*DATA_WIDTH;
-
-    logic signed [2*DATA_WIDTH-1:0] mult;
-    logic signed [ACCW-1:0] acc;
-
-    assign mult = a * b;
-
-    always_ff @(posedge clk or negedge rst) begin
-        if (!rst) begin
-            acc   <= '0;
-            a_out <= '0;
-            b_out <= '0;
-        end else begin
-            if (clear)
-                acc <= '0;
-            else
-                acc <= acc + mult;
-
-            // propagate a and b to neighbors (registered)
-            a_out <= a;
-            b_out <= b;
-        end
-    end
-
-    assign C_out = acc;
-
-endmodule
 module SystolicArray #(parameter SIZE = 3, parameter DATA_WIDTH = 8)(
-    input  logic clk,
-    input  logic rst,   // active-low reset: rst==0 -> in reset, rst==1 -> running
-    input  logic clear,
-    input  logic signed [DATA_WIDTH-1:0] A_in [SIZE-1:0],
-    input  logic signed [DATA_WIDTH-1:0] B_in [SIZE-1:0],
-    output logic signed [2*DATA_WIDTH-1:0] C_out [SIZE-1:0][SIZE-1:0],
-    output logic done
+   (* DONT_TOUCH = "TRUE" *) input  logic clk,
+ (* DONT_TOUCH = "TRUE" *)   input  logic rst,   // active-low reset: rst==0 -> in reset, rst==1 -> running
+(* DONT_TOUCH = "TRUE" *)    input  logic clear,
+(* DONT_TOUCH = "TRUE" *)    input  logic signed [DATA_WIDTH-1:0] A_in [SIZE-1:0],
+  (* DONT_TOUCH = "TRUE" *)  input  logic signed [DATA_WIDTH-1:0] B_in [SIZE-1:0],
+  (* DONT_TOUCH = "TRUE" *)  output logic signed [2*DATA_WIDTH-1:0] C_out [SIZE-1:0][SIZE-1:0],
+   (* DONT_TOUCH = "TRUE" *) output logic done
 );
 
     // Internal data wires (dimensions chosen so indices used below are valid)
-    logic signed [DATA_WIDTH-1:0] a_wire [0:SIZE][0:SIZE-1]; // a_wire[row][col]
-    logic signed [DATA_WIDTH-1:0] b_wire [0:SIZE-1][0:SIZE]; // b_wire[row][col]
-    logic signed [2*DATA_WIDTH-1:0] c_partial [0:SIZE-1][0:SIZE-1];
+(* KEEP = "TRUE" *)logic signed [DATA_WIDTH-1:0] a_wire [0:SIZE][0:SIZE-1]; // a_wire[row][col]
+(* KEEP = "TRUE" *)logic signed [DATA_WIDTH-1:0] b_wire [0:SIZE-1][0:SIZE]; // b_wire[row][col]
+ (* KEEP = "TRUE" *)logic signed [2*DATA_WIDTH-1:0] c_partial [0:SIZE-1][0:SIZE-1];
     // Initialize internal wires to avoid 'X' propagation
 initial begin
     for (int i = 0; i <= SIZE; i++) begin
@@ -85,6 +48,7 @@ end
                 // - b input is b_wire[i][j]
                 // - a_out drives a_wire[i][j+1] (right)
                 // - b_out drives b_wire[i+1][j] (down)
+                (* DONT_TOUCH = "TRUE" *)
                 // Note: a_wire rows have indices 0..SIZE and cols 0..SIZE-1 so j+1 up to SIZE valid.
                 PE #(.DATA_WIDTH(DATA_WIDTH)) pe_inst (
                     .a       (a_wire[i][j]),
@@ -120,7 +84,43 @@ end
         end
 assign done = (cycle_count >= 2*SIZE*SIZE);
 endmodule
+module PE #(parameter DATA_WIDTH = 10)(
+    input  logic signed [DATA_WIDTH-1:0] a,
+    input  logic signed [DATA_WIDTH-1:0] b,
+    input  logic clk,
+    input  logic rst,    // active-low reset
+    input  logic clear,
+    output logic signed [DATA_WIDTH-1:0] a_out,
+    output logic signed [DATA_WIDTH-1:0] b_out,
+    output logic signed [2*DATA_WIDTH-1:0] C_out
+);
+    localparam ACCW = 2*DATA_WIDTH;
 
+    logic signed [2*DATA_WIDTH-1:0] mult;
+    logic signed [ACCW-1:0] acc;
+
+    assign mult = a * b;
+
+    always_ff @(posedge clk or negedge rst) begin
+        if (!rst) begin
+            acc   <= '0;
+            a_out <= '0;
+            b_out <= '0;
+        end else begin
+            if (clear)
+                acc <= '0;
+            else
+                acc <= acc + mult;
+
+            // propagate a and b to neighbors (registered)
+            a_out <= a;
+            b_out <= b;
+        end
+    end
+
+    assign C_out = acc;
+
+endmodule
 // top_module.sv - Fixed data feeding order
 `timescale 1ns/1ps
 
