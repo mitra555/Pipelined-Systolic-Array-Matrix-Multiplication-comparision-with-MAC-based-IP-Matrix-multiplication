@@ -39,13 +39,10 @@ module tb_3x3;
         Amat[1][0] = 0; Amat[1][1] = 1; Amat[1][2] = 0;
         Amat[2][0] = 0; Amat[2][1] = 0; Amat[2][2] = 1;
 
-        // B = 0..8 row-major:
-        // [ 0 1 2 ]
-        // [ 3 4 5 ]
-        // [ 6 7 8 ]
-        Bmat[0][0] = 0; Bmat[0][1] = 1; Bmat[0][2] = 2;
-        Bmat[1][0] = 3; Bmat[1][1] = 4; Bmat[1][2] = 5;
-        Bmat[2][0] = 6; Bmat[2][1] = 7; Bmat[2][2] = 8;
+
+        Bmat[0][0] = 8; Bmat[0][1] = 7; Bmat[0][2] = 6;
+        Bmat[1][0] = 5; Bmat[1][1] = 4; Bmat[1][2] = 3;
+        Bmat[2][0] = 2; Bmat[2][1] = 1; Bmat[2][2] = 0;
 
         // Reset pulse
         #20;
