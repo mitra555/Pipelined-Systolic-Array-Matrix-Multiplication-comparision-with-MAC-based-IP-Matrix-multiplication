@@ -1,0 +1,204 @@
+`timescale 1ns / 1ps
+module tb;
+    parameter SIZE = 4;
+    parameter DATA_WIDTH = 10;
+    
+    logic clk, rst, clear;
+    logic signed [DATA_WIDTH-1:0] A_in [SIZE-1:0];
+    logic signed [DATA_WIDTH-1:0] B_in [SIZE-1:0];
+    logic signed [2*DATA_WIDTH-1:0] C_out [SIZE-1:0][SIZE-1:0];
+    logic done;
+    
+    // Clock generation
+    initial clk = 0;
+    always #5 clk = ~clk;
+    
+    // DUT instantiation
+    top_module #(
+        .SIZE(SIZE),
+        .DATA_WIDTH(DATA_WIDTH)
+    ) dut (
+        .clk(clk),
+        .rst(rst),
+        .clear(clear),
+        .A_in(A_in),
+        .B_in(B_in),
+        .C_out(C_out),
+        .done(done)
+    );
+    
+    // Test matrices
+    logic signed [DATA_WIDTH-1:0] A [SIZE-1:0][SIZE-1:0];
+    logic signed [DATA_WIDTH-1:0] B [SIZE-1:0][SIZE-1:0];
+    logic signed [2*DATA_WIDTH-1:0] C_expected [SIZE-1:0][SIZE-1:0];
+    
+    // Initialize test matrices
+    initial begin
+        // Matrix A
+        A[0][0] = 1; A[0][1] = 2; A[0][2] = 3; A[0][3] = 4;
+        A[1][0] = 5; A[1][1] = 6; A[1][2] = 7; A[1][3] = 8;
+        A[2][0] = 9; A[2][1] = 1; A[2][2] = 2; A[2][3] = 3;
+        A[3][0] = 4; A[3][1] = 5; A[3][2] = 6; A[3][3] = 7;
+        
+        // Matrix B
+        B[0][0] = 7; B[0][1] = 8; B[0][2] = 9; B[0][3] = 1;
+        B[1][0] = 2; B[1][1] = 3; B[1][2] = 4; B[1][3] = 5;
+        B[2][0] = 6; B[2][1] = 7; B[2][2] = 8; B[2][3] = 9;
+        B[3][0] = 1; B[3][1] = 2; B[3][2] = 3; B[3][3] = 4;
+        
+        // Calculate expected result: C = A × B
+        for (int i = 0; i < SIZE; i++) begin
+            for (int j = 0; j < SIZE; j++) begin
+                C_expected[i][j] = 0;
+                for (int k = 0; k < SIZE; k++) begin
+                    C_expected[i][j] += A[i][k] * B[k][j];
+                end
+            end
+        end
+    end
+    
+    // Stimulus
+    initial begin
+        int errors;
+        
+        rst = 0;
+        clear = 0;
+        
+        // Initialize inputs
+        for (int i = 0; i < SIZE; i++) begin
+            A_in[i] = 0;
+            B_in[i] = 0;
+        end
+        
+        #10;
+        rst = 1;
+        
+        $display("==============================================");
+        $display("Matrix Multiplication Test");
+        $display("==============================================\n");
+        
+        $display("Matrix A:");
+        for (int i = 0; i < SIZE; i++) begin
+            for (int j = 0; j < SIZE; j++) begin
+                $write("%4d ", A[i][j]);
+            end
+            $write("\n");
+        end
+        
+        $display("\nMatrix B:");
+        for (int i = 0; i < SIZE; i++) begin
+            for (int j = 0; j < SIZE; j++) begin
+                $write("%4d ", B[i][j]);
+            end
+            $write("\n");
+        end
+        
+        $display("\n--- Feeding Data to Systolic Array ---\n");
+        
+        // Feed matrix data with proper skewing
+        // Cycle 0
+        A_in[0] = A[0][0]; B_in[0] = B[0][0];
+        A_in[1] = 0;       B_in[1] = 0;
+        A_in[2] = 0;       B_in[2] = 0;
+        A_in[3] = 0;       B_in[3] = 0;
+        #10;
+        
+        // Cycle 1
+        A_in[0] = A[0][1]; B_in[0] = B[1][0];
+        A_in[1] = A[1][0]; B_in[1] = B[0][1];
+        A_in[2] = 0;       B_in[2] = 0;
+        A_in[3] = 0;       B_in[3] = 0;
+        #10;
+        
+        // Cycle 2
+        A_in[0] = A[0][2]; B_in[0] = B[2][0];
+        A_in[1] = A[1][1]; B_in[1] = B[1][1];
+        A_in[2] = A[2][0]; B_in[2] = B[0][2];
+        A_in[3] = 0;       B_in[3] = 0;
+        #10;
+        
+        // Cycle 3
+        A_in[0] = A[0][3]; B_in[0] = B[3][0];
+        A_in[1] = A[1][2]; B_in[1] = B[2][1];
+        A_in[2] = A[2][1]; B_in[2] = B[1][2];
+        A_in[3] = A[3][0]; B_in[3] = B[0][3];
+        #10;
+        
+        // Cycle 4
+        A_in[0] = 0;       B_in[0] = 0;
+        A_in[1] = A[1][3]; B_in[1] = B[3][1];
+        A_in[2] = A[2][2]; B_in[2] = B[2][2];
+        A_in[3] = A[3][1]; B_in[3] = B[1][3];
+        #10;
+        
+        // Cycle 5
+        A_in[0] = 0;       B_in[0] = 0;
+        A_in[1] = 0;       B_in[1] = 0;
+        A_in[2] = A[2][3]; B_in[2] = B[3][2];
+        A_in[3] = A[3][2]; B_in[3] = B[2][3];
+        #10;
+        
+        // Cycle 6
+        A_in[0] = 0;       B_in[0] = 0;
+        A_in[1] = 0;       B_in[1] = 0;
+        A_in[2] = 0;       B_in[2] = 0;
+        A_in[3] = A[3][3]; B_in[3] = B[3][3];
+        #10;
+        
+        // Flush cycles
+        for (int t = 0; t < SIZE+2; t++) begin
+            for (int i = 0; i < SIZE; i++) begin
+                A_in[i] = 0;
+                B_in[i] = 0;
+            end
+            #10;
+        end
+        
+        #50; // Settling time
+        
+        // Display and verify results
+        $display("\n==============================================");
+        $display("Results:");
+        $display("==============================================\n");
+        
+        $display("Computed Matrix C:");
+        for (int i = 0; i < SIZE; i++) begin
+            for (int j = 0; j < SIZE; j++) begin
+                $write("%4d ", C_out[i][j]);
+            end
+            $write("\n");
+        end
+        
+        $display("\nExpected Matrix C:");
+        for (int i = 0; i < SIZE; i++) begin
+            for (int j = 0; j < SIZE; j++) begin
+                $write("%4d ", C_expected[i][j]);
+            end
+            $write("\n");
+        end
+        
+        // Verification
+        $display("\n==============================================");
+        $display("Verification:");
+        $display("==============================================");
+        errors = 0;
+        for (int i = 0; i < SIZE; i++) begin
+            for (int j = 0; j < SIZE; j++) begin
+                if (C_out[i][j] != C_expected[i][j]) begin
+                    $display("[ERROR] Position [%0d][%0d]: Got %0d, Expected %0d", 
+                             i, j, C_out[i][j], C_expected[i][j]);
+                    errors++;
+                end
+            end
+        end
+        
+        if (errors == 0) begin
+            $display("\n*** ALL TESTS PASSED! ***");
+        end else begin
+            $display("\n*** %0d ERRORS FOUND ***", errors);
+        end
+        $display("==============================================\n");
+        
+        $finish;
+    end
+endmodule
